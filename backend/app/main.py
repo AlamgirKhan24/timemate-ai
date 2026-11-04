@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 
-from app.api import auth, users
+from app.api import auth, tasks, users
 
 app = FastAPI(title="TimeMate AI")
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(tasks.router)
 
 
 @app.get("/")
