@@ -3,26 +3,28 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from app.core.config import settings
 from app.core.database import SessionLocal
 from app.integrations.whatsapp import send_template
+from app.models.notification_log import NotificationLog
+from app.models.notification_settings import UserNotificationSettings
 from app.models.reminder import Reminder
 from app.models.task import Task
 
 logger = logging.getLogger("timemate.reminders")
 
-# A reminder more than this late (for example, the server was off) is marked "missed"
 GRACE_MINUTES = 60
 
 
-def send_reminder(reminder: Reminder, task: Task) -> None:
-    # Test setup: sends Meta's hello_world template to the test recipient.
-    # Later: send the user's own verified number and a custom approved template.
-    message_id = send_template(settings.whatsapp_test_recipient)
-    print(
-        f"[REMINDER SENT] task='{task.title}' reminder id={reminder.id} "
-        f"message id={message_id}",
-        flush=True,
+def add_log(db, reminder, task, result, message_id=None, error=None):
+    db.add(
+        NotificationLog(
+            user_id=task.user_id,
+            reminder_id=reminder.id,
+            task_title=task.title,
+            provider_message_id=message_id,
+            result=result,
+            error=error,
+        )
     )
 
 
@@ -40,17 +42,40 @@ def process_due_reminders() -> None:
         for reminder, task in rows:
             if task.status == "completed":
                 reminder.status = "skipped"
-            elif reminder.remind_at < now - timedelta(minutes=GRACE_MINUTES):
+                add_log(db, reminder, task, "skipped", error="Task already completed")
+                continue
+
+            if reminder.remind_at < now - timedelta(minutes=GRACE_MINUTES):
                 reminder.status = "missed"
-            else:
-                try:
-                    send_reminder(reminder, task)
-                    reminder.status = "sent"
-                    reminder.sent_at = now
-                except Exception as exc:
-                    logger.error("Failed to send reminder %s: %s", reminder.id, exc)
-                    print(f"[REMINDER FAILED] id={reminder.id}: {exc}", flush=True)
-                    reminder.status = "failed"
+                add_log(db, reminder, task, "missed", error="Reminder was too late to send")
+                continue
+
+            settings_row = db.scalar(
+                select(UserNotificationSettings).where(
+                    UserNotificationSettings.user_id == task.user_id
+                )
+            )
+            if not settings_row or not settings_row.opted_in or not settings_row.whatsapp_number:
+                reminder.status = "skipped"
+                add_log(db, reminder, task, "skipped", error="No opted-in WhatsApp number")
+                print(f"[REMINDER SKIPPED] id={reminder.id}: no opted-in number", flush=True)
+                continue
+
+            try:
+                message_id = send_template(settings_row.whatsapp_number)
+                reminder.status = "sent"
+                reminder.sent_at = now
+                add_log(db, reminder, task, "sent", message_id=message_id)
+                print(
+                    f"[REMINDER SENT] task='{task.title}' reminder id={reminder.id} "
+                    f"message id={message_id}",
+                    flush=True,
+                )
+            except Exception as exc:
+                logger.error("Failed to send reminder %s: %s", reminder.id, exc)
+                print(f"[REMINDER FAILED] id={reminder.id}: {exc}", flush=True)
+                reminder.status = "failed"
+                add_log(db, reminder, task, "failed", error=str(exc)[:500])
 
         db.commit()
     except Exception:
