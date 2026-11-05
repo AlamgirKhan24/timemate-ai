@@ -69,3 +69,15 @@ export const updateTask = (id, body) =>
   });
 
 export const deleteTask = (id) => request(`/tasks/${id}`, { method: "DELETE" });
+
+export const getWhatsAppSettings = () => request("/whatsapp/settings");
+
+export const connectWhatsApp = (body) =>
+  request("/whatsapp/connect", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const disconnectWhatsApp = () =>
+  request("/whatsapp/disconnect", { method: "DELETE" });
