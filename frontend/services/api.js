@@ -81,3 +81,5 @@ export const connectWhatsApp = (body) =>
 
 export const disconnectWhatsApp = () =>
   request("/whatsapp/disconnect", { method: "DELETE" });
+
+export const getNotifications = (limit = 50) => request(`/notifications?limit=${limit}`);
