@@ -90,3 +90,9 @@ export const createReminder = (taskId, offsetMinutes) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task_id: taskId, offset_minutes: offsetMinutes }),
   });
+export const updateMe = (body) =>
+  request("/users/me", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });

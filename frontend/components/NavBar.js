@@ -9,6 +9,7 @@ const links = [
   { href: "/calendar", label: "Calendar" },
   { href: "/history", label: "History" },
   { href: "/settings", label: "WhatsApp" },
+  { href: "/profile", label: "Profile" },
 ];
 
 const hiddenOn = ["/", "/login", "/register"];
