@@ -83,3 +83,10 @@ export const disconnectWhatsApp = () =>
   request("/whatsapp/disconnect", { method: "DELETE" });
 
 export const getNotifications = (limit = 50) => request(`/notifications?limit=${limit}`);
+
+export const createReminder = (taskId, offsetMinutes) =>
+  request("/reminders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_id: taskId, offset_minutes: offsetMinutes }),
+  });

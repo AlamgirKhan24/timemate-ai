@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createTask } from "@/services/api";
+import { createTask, createReminder } from "@/services/api";
 
 const empty = {
   title: "",
@@ -10,11 +10,13 @@ const empty = {
   duration: "",
   priority: "medium",
   category: "Personal",
+  remind: "",
 };
 
 export default function TaskForm({ onCreated }) {
   const [form, setForm] = useState(empty);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
 
   function update(field, value) {
@@ -24,9 +26,10 @@ export default function TaskForm({ onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    setNotice("");
     setSaving(true);
     try {
-      await createTask({
+      const task = await createTask({
         title: form.title.trim(),
         description: form.description.trim() || null,
         start_at: form.start,
@@ -34,6 +37,15 @@ export default function TaskForm({ onCreated }) {
         priority: form.priority,
         category: form.category,
       });
+
+      if (form.remind !== "") {
+        try {
+          await createReminder(task.id, Number(form.remind));
+        } catch (reminderErr) {
+          setNotice(`Task saved, but no reminder was created: ${reminderErr.message}`);
+        }
+      }
+
       setForm(empty);
       onCreated();
     } catch (err) {
@@ -86,9 +98,18 @@ export default function TaskForm({ onCreated }) {
             <option>Health</option>
           </select>
         </div>
+        <div>
+          <label htmlFor="remind" className={label}>Reminder</label>
+          <select id="remind" value={form.remind} onChange={(e) => update("remind", e.target.value)} className={input}>
+            <option value="">No reminder</option>
+            <option value="0">At task time</option>
+            <option value="30">30 minutes before</option>
+          </select>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {notice && <p className="text-sm text-amber-700">{notice}</p>}
 
       <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">
         {saving ? "Saving..." : "Add task"}
