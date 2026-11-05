@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models.reminder import Reminder
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
@@ -25,6 +26,20 @@ def get_own_task(task_id: int, user: User, db: Session) -> Task:
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+def reschedule_reminders(task: Task, db: Session) -> None:
+    start_at = task.start_at
+    if start_at.tzinfo is None:
+        start_at = start_at.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+
+    reminders = db.scalars(select(Reminder).where(Reminder.task_id == task.id)).all()
+    for reminder in reminders:
+        reminder.remind_at = start_at - timedelta(minutes=reminder.offset_minutes)
+        if reminder.remind_at > now:
+            reminder.status = "pending"
+            reminder.sent_at = None
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
@@ -77,12 +92,17 @@ def update_task(
 ):
     task = get_own_task(task_id, user, db)
     changes = data.model_dump(exclude_unset=True)
+    time_changed = False
     if "start_at" in changes and changes["start_at"] is not None:
         changes["start_at"] = to_utc(changes["start_at"], user.timezone)
+        time_changed = True
     for field, value in changes.items():
         if value is None and field in ("title", "start_at", "priority", "category", "status"):
             continue
         setattr(task, field, value)
+    if time_changed:
+        db.flush()
+        reschedule_reminders(task, db)
     db.commit()
     db.refresh(task)
     return task

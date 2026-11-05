@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TaskForm from "@/components/TaskForm";
+import EditTaskForm from "@/components/EditTaskForm";
 import { clearToken, deleteTask, getMe, getTasks, updateTask } from "@/services/api";
 
 const priorityStyle = {
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [editingId, setEditingId] = useState(null);
 
   const load = useCallback(async () => {
     const [me, list] = await Promise.all([getMe(), getTasks()]);
@@ -105,25 +107,42 @@ export default function DashboardPage() {
             <ul className="space-y-2">
               {list.map((task) => (
                 <li key={task.id} className="flex items-start justify-between gap-3 rounded-xl bg-white p-4 shadow">
-                  <div>
-                    <p className={`font-medium ${task.status === "completed" ? "line-through text-gray-400" : ""}`}>
-                      {task.title}
-                    </p>
-                    <p className="text-sm text-gray-600">{formatTime(task.start_at, user.timezone)}</p>
-                    {task.description && <p className="mt-1 text-sm text-gray-500">{task.description}</p>}
-                    <div className="mt-2 flex gap-2 text-xs">
-                      <span className={`rounded-full px-2 py-0.5 ${priorityStyle[task.priority]}`}>{task.priority}</span>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700">{task.category}</span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2 text-sm">
-                    <button onClick={() => toggleDone(task)} className="rounded-lg border border-gray-300 px-3 py-1">
-                      {task.status === "completed" ? "Undo" : "Done"}
-                    </button>
-                    <button onClick={() => remove(task)} className="rounded-lg border border-red-300 px-3 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </div>
+                  {editingId === task.id ? (
+                    <EditTaskForm
+                      task={task}
+                      timeZone={user.timezone}
+                      onSaved={() => {
+                        setEditingId(null);
+                        load();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div>
+                        <p className={`font-medium ${task.status === "completed" ? "line-through text-gray-400" : ""}`}>
+                          {task.title}
+                        </p>
+                        <p className="text-sm text-gray-600">{formatTime(task.start_at, user.timezone)}</p>
+                        {task.description && <p className="mt-1 text-sm text-gray-500">{task.description}</p>}
+                        <div className="mt-2 flex gap-2 text-xs">
+                          <span className={`rounded-full px-2 py-0.5 ${priorityStyle[task.priority]}`}>{task.priority}</span>
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700">{task.category}</span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2 text-sm">
+                        <button onClick={() => setEditingId(task.id)} className="rounded-lg border border-gray-300 px-3 py-1">
+                          Edit
+                        </button>
+                        <button onClick={() => toggleDone(task)} className="rounded-lg border border-gray-300 px-3 py-1">
+                          {task.status === "completed" ? "Undo" : "Done"}
+                        </button>
+                        <button onClick={() => remove(task)} className="rounded-lg border border-red-300 px-3 py-1 text-red-600">
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
