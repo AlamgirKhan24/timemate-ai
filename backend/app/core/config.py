@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     whatsapp_token: str = ""
     whatsapp_phone_number_id: str = ""
     whatsapp_verify_token: str = ""
+    whatsapp_test_recipient: str = ""
 
     model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
