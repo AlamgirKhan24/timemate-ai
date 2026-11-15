@@ -17,17 +17,17 @@ def verify_password(password: str, hashed: str) -> bool:
     return password_hasher.verify(password, hashed)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     expires = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    payload = {"sub": str(user_id), "exp": expires}
+    payload = {"sub": str(user_id), "ver": token_version, "exp": expires}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
+def decode_access_token(token: str) -> tuple[int, int] | None:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-        return int(payload["sub"])
+        return int(payload["sub"]), int(payload.get("ver", 0))
     except (jwt.PyJWTError, KeyError, ValueError):
         return None

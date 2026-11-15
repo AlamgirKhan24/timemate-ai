@@ -55,21 +55,21 @@ export default function TaskForm({ onCreated }) {
     }
   }
 
-  const input = "w-full rounded-lg border border-gray-300 px-3 py-2";
-  const label = "mb-1 block text-sm font-medium";
+  const input = "app-field mt-1.5";
+  const label = "block text-xs font-medium text-gray-500";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl bg-white p-5 shadow">
-      <h2 className="text-lg font-semibold">Add a task</h2>
+    <form onSubmit={handleSubmit} className="app-glass-card space-y-4 p-5 sm:p-6">
+      <div className="mb-1"><p className="app-page-eyebrow">A note to your future self</p><h2 className="mt-1 text-xl">Add a task</h2><p className="mt-1 text-xs text-gray-500">Start with the important details. You can always change them later.</p></div>
 
       <div>
         <label htmlFor="title" className={label}>Title</label>
-        <input id="title" required value={form.title} onChange={(e) => update("title", e.target.value)} className={input} />
+        <input id="title" required value={form.title} onChange={(e) => update("title", e.target.value)} className={input} placeholder="What needs to get done?" />
       </div>
 
       <div>
         <label htmlFor="description" className={label}>Description</label>
-        <textarea id="description" rows={2} value={form.description} onChange={(e) => update("description", e.target.value)} className={input} />
+        <textarea id="description" rows={2} value={form.description} onChange={(e) => update("description", e.target.value)} className={input} placeholder="Add a little more context (optional)" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -111,8 +111,8 @@ export default function TaskForm({ onCreated }) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {notice && <p className="text-sm text-amber-700">{notice}</p>}
 
-      <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">
-        {saving ? "Saving..." : "Add task"}
+      <button type="submit" disabled={saving} className="app-primary-button">
+        {saving ? "Saving your task…" : "Save task"}
       </button>
     </form>
   );

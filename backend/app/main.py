@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, notifications, reminders, tasks, users, whatsapp_settings
+from app.api import assistant, auth, calendar, notifications, overview, recurring, reminders, reports, tasks, users, whatsapp_settings
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 
 
@@ -27,8 +27,13 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(tasks.router)
+app.include_router(calendar.router)
 app.include_router(reminders.router)
 app.include_router(notifications.router)
+app.include_router(overview.router)
+app.include_router(recurring.router)
+app.include_router(reports.router)
+app.include_router(assistant.router)
 app.include_router(whatsapp_settings.router)
 
 

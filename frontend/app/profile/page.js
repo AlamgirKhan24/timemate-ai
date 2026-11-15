@@ -66,20 +66,20 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-gray-500">Loading your profile…</p>
       </main>
     );
   }
 
-  const input = "w-full rounded-lg border border-gray-300 px-3 py-2";
-  const label = "mb-1 block text-sm font-medium";
+  const input = "app-field mt-1.5";
+  const label = "block text-xs font-medium text-gray-500";
 
   return (
-    <main className="mx-auto max-w-xl space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Profile</h1>
+    <main className="app-page app-page-narrow space-y-5">
+      <header className="app-page-header"><div><p className="app-page-eyebrow">Your personal settings</p><h1 className="app-page-title">Make TimeMate yours.</h1><p className="app-page-description">Keep your name and local time up to date so your schedule feels right wherever you are.</p></div></header>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow">
+      <form onSubmit={handleSubmit} className="app-glass-card max-w-2xl space-y-5 p-5 sm:p-7">
         <div>
           <label htmlFor="email" className={label}>Email</label>
           <input id="email" value={user.email} disabled className={`${input} bg-gray-100 text-gray-500`} />
@@ -97,18 +97,14 @@ export default function ProfilePage() {
               <option key={z} value={z}>{z}</option>
             ))}
           </select>
-          <p className="mt-1 text-sm text-gray-600">Current time in this zone: {previewTime(timezone)}</p>
-          <p className="mt-1 text-xs text-gray-500">
-            Pakistan users should choose Asia/Karachi. Your existing tasks and reminders keep the same moment in time;
-            only the times shown on screen change. New tasks use the time zone selected here.
-          </p>
+          <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3.5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Local time right now</p><p className="mt-1 text-base font-medium text-gray-900">{previewTime(timezone)}</p><p className="mt-2 text-xs leading-5 text-gray-500">Changing your time zone updates how dates appear. Existing tasks keep their scheduled moment; new tasks use this time zone.</p></div>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {notice && <p className="text-sm text-green-700">{notice}</p>}
+        {error && <p role="alert" className="app-message is-error">{error}</p>}
+        {notice && <p role="status" className="app-message is-success">{notice}</p>}
 
-        <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">
-          {saving ? "Saving..." : "Save profile"}
+        <button type="submit" disabled={saving} className="app-primary-button">
+          {saving ? "Saving your settings…" : "Save my settings"}
         </button>
       </form>
     </main>

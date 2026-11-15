@@ -19,6 +19,11 @@ class UserNotificationSettings(Base):
     opted_in_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    verification_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    verification_attempts: Mapped[int] = mapped_column(default=0, nullable=False)
+    verification_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

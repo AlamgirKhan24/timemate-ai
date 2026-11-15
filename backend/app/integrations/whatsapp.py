@@ -2,20 +2,25 @@ import httpx
 
 from app.core.config import settings
 
-GRAPH_URL = "https://graph.facebook.com/v25.0"
+GRAPH_URL = f"https://graph.facebook.com/{settings.whatsapp_graph_version.strip('/')}"
 
 
 class WhatsAppError(Exception):
-    pass
+    def __init__(self, message, *, retry_safe=False):
+        super().__init__(message)
+        self.retry_safe = retry_safe
 
 
-def send_template(to, template_name="hello_world", language="en_US", body_params=None):
+def send_template(to, template_name, language=None, body_params=None):
     if not settings.whatsapp_token or not settings.whatsapp_phone_number_id:
-        raise WhatsAppError("WhatsApp token or phone number ID is missing")
+        raise WhatsAppError("WhatsApp token or phone number ID is missing", retry_safe=True)
     if not to:
-        raise WhatsAppError("No recipient number given")
+        raise WhatsAppError("No recipient number given", retry_safe=True)
 
-    template = {"name": template_name, "language": {"code": language}}
+    template = {
+        "name": template_name,
+        "language": {"code": language or settings.whatsapp_template_language},
+    }
     if body_params:
         template["components"] = [
             {
@@ -43,6 +48,9 @@ def send_template(to, template_name="hello_world", language="en_US", body_params
             detail = response.json()["error"]["message"]
         except Exception:
             detail = response.text[:200]
-        raise WhatsAppError(f"WhatsApp API error {response.status_code}: {detail}")
+        raise WhatsAppError(
+            f"WhatsApp API error {response.status_code}: {detail}",
+            retry_safe=400 <= response.status_code < 500,
+        )
 
     return response.json()["messages"][0]["id"]

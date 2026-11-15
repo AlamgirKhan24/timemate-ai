@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearToken, getMe, getTasks } from "@/services/api";
+import { clearToken, getCalendar, getMe } from "@/services/api";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MODES = ["month", "week", "day"];
@@ -48,9 +48,9 @@ function fmt(key, options) {
 }
 
 function chipStyle(task, now) {
-  if (task.status === "completed") return "bg-gray-100 text-gray-500 line-through";
-  if (new Date(task.start_at) < now) return "bg-red-100 text-red-700";
-  return "bg-blue-100 text-blue-700";
+  if (task.status === "completed") return "calendar-task-chip is-completed";
+  if (new Date(task.start_at) < now) return "calendar-task-chip is-overdue";
+  return "calendar-task-chip";
 }
 
 function statusLabel(task, now) {
@@ -63,7 +63,7 @@ function TaskList({ tasks, timeZone, now }) {
   return (
     <ul className="space-y-2">
       {tasks.map((t) => (
-        <li key={t.id} className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3">
+        <li key={t.id} className="app-glass-card flex items-start justify-between gap-3 p-3">
           <div>
             <p className={`font-medium ${t.status === "completed" ? "line-through text-gray-400" : ""}`}>{t.title}</p>
             <p className="text-sm text-gray-600">
@@ -117,7 +117,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (!user || !rangeStart) return;
-    getTasks(`${rangeStart}T00:00:00`, `${rangeEnd}T23:59:59`)
+    getCalendar(rangeStart, addDays(rangeEnd, 1))
       .then((list) => {
         setTasks(list);
         setError("");
@@ -137,7 +137,7 @@ export default function CalendarPage() {
 
   if (!user || !anchor) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex min-h-[60vh] items-center justify-center">
         <p>Loading...</p>
       </main>
     );
@@ -183,40 +183,44 @@ export default function CalendarPage() {
   const selectedTasks = selected ? byDay[selected] || [] : [];
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+    <main className="app-page space-y-5">
+      <header className="app-page-header">
+        <div><p className="app-page-eyebrow">A little structure, at a glance</p><h1 className="app-page-title">Your calendar</h1><p className="app-page-description">See what’s coming up, find a bit of breathing room, and move through your schedule at your pace.</p></div>
+        <p className="shrink-0 text-xs text-gray-500">{tz}</p>
+      </header>
+      <div className="app-glass-card flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
+        <h2 className="text-lg">{title}</h2>
         <div className="flex flex-wrap gap-2 text-sm">
-          <div className="flex overflow-hidden rounded-lg border border-gray-300">
+          <div className="flex overflow-hidden rounded-xl border border-gray-300 bg-gray-100/50 p-1">
             {MODES.map((m) => (
               <button
                 key={m}
                 onClick={() => switchMode(m)}
                 aria-pressed={mode === m}
-                className={`px-3 py-1 capitalize ${mode === m ? "bg-blue-600 text-white" : "bg-white"}`}
+                className={`rounded-lg px-3 py-1.5 text-xs capitalize transition ${mode === m ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
               >
                 {m}
               </button>
             ))}
           </div>
-          <button onClick={() => move(-1)} aria-label="Previous" className="rounded-lg border border-gray-300 px-3 py-1">&larr;</button>
-          <button onClick={goToday} className="rounded-lg border border-gray-300 px-3 py-1">Today</button>
-          <button onClick={() => move(1)} aria-label="Next" className="rounded-lg border border-gray-300 px-3 py-1">&rarr;</button>
+          <button onClick={() => move(-1)} aria-label="Previous" className="app-secondary-button min-h-9 px-3">&larr;</button>
+          <button onClick={goToday} className="app-secondary-button min-h-9 px-3">Today</button>
+          <button onClick={() => move(1)} aria-label="Next" className="app-secondary-button min-h-9 px-3">&rarr;</button>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="app-message is-error">{error}</p>}
 
       {mode === "month" && (
         <>
           <div className="overflow-x-auto">
-            <div className="min-w-[640px] rounded-2xl bg-white p-2 shadow">
-              <div className="grid grid-cols-7 text-center text-xs font-medium text-gray-500">
+            <div className="app-glass-card min-w-[640px] overflow-hidden p-2 sm:p-3">
+              <div className="grid grid-cols-7 text-center font-mono text-[10px] uppercase tracking-wider text-gray-500">
                 {WEEKDAYS.map((d) => (
-                  <div key={d} className="py-1">{d}</div>
+                  <div key={d} className="py-2">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-px bg-gray-200">
+              <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-gray-200">
                 {days.map((key) => {
                   const inMonth = Number(key.slice(5, 7)) - 1 === currentMonth;
                   const list = byDay[key] || [];
@@ -225,14 +229,14 @@ export default function CalendarPage() {
                       key={key}
                       onClick={() => setSelected(key)}
                       onDoubleClick={() => openDay(key)}
-                      className={`min-h-24 bg-white p-1 text-left align-top ${inMonth ? "" : "bg-gray-50 text-gray-400"} ${key === selected ? "ring-2 ring-blue-500" : ""}`}
+                      className={`calendar-cell ${inMonth ? "" : "is-outside"} ${key === selected ? "is-selected" : ""} ${key === todayKey ? "is-today" : ""}`}
                     >
-                      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${key === todayKey ? "bg-blue-600 text-white" : ""}`}>
+                      <span className="calendar-date">
                         {Number(key.slice(8, 10))}
                       </span>
                       <div className="mt-1 space-y-0.5">
                         {list.slice(0, 3).map((t) => (
-                          <div key={t.id} className={`truncate rounded px-1 text-xs ${chipStyle(t, now)}`}>
+                          <div key={t.id} className={chipStyle(t, now)}>
                             {timeOnly(t.start_at, tz)} {t.title}
                           </div>
                         ))}
@@ -245,12 +249,12 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <section className="rounded-2xl bg-white p-4 shadow">
+          <section className="app-glass-card p-4 sm:p-5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">
                 {fmt(selected, { weekday: "long", month: "long", day: "numeric" })}
               </h2>
-              <button onClick={() => openDay(selected)} className="rounded-lg border border-gray-300 px-3 py-1 text-sm">
+              <button onClick={() => openDay(selected)} className="app-secondary-button min-h-9 px-3">
                 Open day view
               </button>
             </div>
@@ -264,7 +268,7 @@ export default function CalendarPage() {
           {days.map((key) => {
             const list = byDay[key] || [];
             return (
-              <div key={key} className={`rounded-2xl bg-white p-2 shadow ${key === todayKey ? "ring-2 ring-blue-500" : ""}`}>
+              <div key={key} className={`app-glass-card p-3 ${key === todayKey ? "ring-1 ring-blue-600/40" : ""}`}>
                 <button onClick={() => openDay(key)} className="mb-2 w-full text-left">
                   <span className="block text-xs font-medium text-gray-500">{fmt(key, { weekday: "short" })}</span>
                   <span className="block text-lg font-semibold">{fmt(key, { month: "short", day: "numeric" })}</span>
@@ -274,7 +278,7 @@ export default function CalendarPage() {
                 ) : (
                   <div className="space-y-1">
                     {list.map((t) => (
-                      <div key={t.id} className={`rounded px-2 py-1 text-xs ${chipStyle(t, now)}`}>
+                      <div key={t.id} className={chipStyle(t, now)}>
                         <span className="block font-medium">{timeOnly(t.start_at, tz)}</span>
                         <span className="block break-words">{t.title}</span>
                       </div>
@@ -288,7 +292,7 @@ export default function CalendarPage() {
       )}
 
       {mode === "day" && (
-        <section className="rounded-2xl bg-white p-4 shadow">
+        <section className="app-glass-card p-4 sm:p-5">
           <TaskList tasks={byDay[anchor] || []} timeZone={tz} now={now} />
         </section>
       )}

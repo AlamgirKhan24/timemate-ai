@@ -22,7 +22,15 @@ def sent(monkeypatch):
     return calls
 
 
-def make_reminder(client, headers, minutes_ago=1, number="923001234567", opted_in=True, completed=False):
+def make_reminder(
+    client,
+    headers,
+    minutes_ago=1,
+    number="923001234567",
+    opted_in=True,
+    verified=True,
+    completed=False,
+):
     """Create a task through the API, then a reminder that is due `minutes_ago` minutes ago."""
     user_id = client.get("/users/me", headers=headers).json()["id"]
     start = (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
@@ -34,7 +42,14 @@ def make_reminder(client, headers, minutes_ago=1, number="923001234567", opted_i
 
     with SessionLocal() as db:
         if number:
-            db.add(UserNotificationSettings(user_id=user_id, whatsapp_number=number, opted_in=opted_in))
+            db.add(
+                UserNotificationSettings(
+                    user_id=user_id,
+                    whatsapp_number=number,
+                    opted_in=opted_in,
+                    is_verified=verified,
+                )
+            )
         reminder = Reminder(
             task_id=task_id,
             offset_minutes=0,
@@ -66,7 +81,7 @@ def test_due_reminder_is_sent_exactly_once(client, make_user, sent):
 
     assert sent == ["923001234567"]
     assert reminder_status(rid) == "sent"
-    assert log_rows(rid) == [("sent", None)]
+    assert log_rows(rid) == [("accepted", None)]
 
 
 def test_reminder_not_due_yet_stays_pending(client, make_user, sent):
@@ -92,6 +107,16 @@ def test_completed_task_is_skipped(client, make_user, sent):
 def test_user_without_opt_in_gets_nothing(client, make_user, sent):
     headers = make_user()
     rid, _ = make_reminder(client, headers, opted_in=False)
+
+    process_due_reminders()
+
+    assert sent == []
+    assert reminder_status(rid) == "skipped"
+
+
+def test_user_without_verified_number_gets_nothing(client, make_user, sent):
+    headers = make_user()
+    rid, _ = make_reminder(client, headers, verified=False)
 
     process_due_reminders()
 
@@ -133,6 +158,23 @@ def test_failed_send_is_recorded(client, make_user, monkeypatch):
     rows = log_rows(rid)
     assert rows[0][0] == "failed"
     assert "WhatsApp is down" in rows[0][1]
+
+
+def test_definite_provider_failure_can_be_retried(client, make_user, monkeypatch):
+    from app.integrations.whatsapp import WhatsAppError
+
+    def rejected_send(*args, **kwargs):
+        raise WhatsAppError("WhatsApp rejected the request", retry_safe=True)
+
+    monkeypatch.setattr("app.services.reminder_service.send_template", rejected_send)
+    headers = make_user()
+    rid, _ = make_reminder(client, headers)
+    process_due_reminders()
+
+    assert reminder_status(rid) == "failed"
+    retried = client.post(f"/reminders/{rid}/retry", headers=headers)
+    assert retried.status_code == 202, retried.text
+    assert retried.json()["status"] == "pending"
 
 
 def test_deleting_a_task_removes_its_reminders(client, make_user, sent):

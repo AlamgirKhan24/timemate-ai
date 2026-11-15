@@ -2,12 +2,15 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.api.tasks import get_own_task
 from app.core.database import get_db
 from app.models.reminder import Reminder
+from app.models.notification_log import NotificationLog
+from app.models.notification_settings import UserNotificationSettings
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.reminder import ReminderCreate, ReminderOut
@@ -33,6 +36,8 @@ def create_reminder(
     user: User = Depends(get_current_user),
 ):
     task = get_own_task(data.task_id, user, db)
+    if task.status == "completed":
+        raise HTTPException(status_code=400, detail="Completed tasks cannot have active reminders")
 
     start_at = task.start_at
     if start_at.tzinfo is None:
@@ -57,7 +62,11 @@ def create_reminder(
         remind_at=remind_at,
     )
     db.add(reminder)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="This reminder already exists for the task") from exc
     db.refresh(reminder)
     return reminder
 
@@ -86,3 +95,39 @@ def delete_reminder(
 ):
     db.delete(get_own_reminder(reminder_id, user, db))
     db.commit()
+
+
+@router.post("/{reminder_id}/retry", response_model=ReminderOut, status_code=status.HTTP_202_ACCEPTED)
+def retry_reminder(
+    reminder_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    reminder = get_own_reminder(reminder_id, user, db)
+    if reminder.status != "failed":
+        raise HTTPException(status_code=409, detail="Only failed reminders can be retried")
+    last_attempt = db.scalar(
+        select(NotificationLog)
+        .where(NotificationLog.reminder_id == reminder.id)
+        .order_by(NotificationLog.created_at.desc(), NotificationLog.id.desc())
+    )
+    if not last_attempt or not last_attempt.retry_safe:
+        raise HTTPException(
+            status_code=409,
+            detail="The delivery result is uncertain; retry is disabled to prevent a duplicate message",
+        )
+    task = db.get(Task, reminder.task_id)
+    if not task or task.status == "completed":
+        raise HTTPException(status_code=409, detail="Completed or deleted tasks cannot be retried")
+    whatsapp = db.scalar(
+        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user.id)
+    )
+    if not whatsapp or not whatsapp.opted_in or not whatsapp.is_verified or not whatsapp.whatsapp_number:
+        raise HTTPException(status_code=409, detail="Connect and verify an opted-in WhatsApp number first")
+    reminder.status = "pending"
+    reminder.remind_at = datetime.now(timezone.utc)
+    reminder.claimed_at = None
+    reminder.sent_at = None
+    db.commit()
+    db.refresh(reminder)
+    return reminder

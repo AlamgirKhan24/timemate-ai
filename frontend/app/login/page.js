@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AuthShell from "@/components/AuthShell";
 import { loginUser } from "@/services/api";
 
 export default function LoginPage() {
@@ -26,32 +27,13 @@ export default function LoginPage() {
     }
   }
 
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow">
-        <h1 className="text-2xl font-semibold">Log in to TimeMate</h1>
-
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium">Email</label>
-          <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium">Password</label>
-          <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 py-2 font-medium text-white disabled:opacity-60">
-          {loading ? "Logging in..." : "Log in"}
-        </button>
-
-        <p className="text-center text-sm text-gray-600">
-          New here?{" "}
-          <Link href="/register" className="text-blue-600 underline">Create an account</Link>
-        </p>
-      </form>
-    </main>
-  );
+  return <AuthShell eyebrow="Welcome back" title="Pick up where you left off." description="Sign in to see your calendar, tasks, and reminders in one place.">
+    <form onSubmit={handleSubmit} className="auth-form">
+      <label className="auth-field" htmlFor="email">Email<input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="auth-input" placeholder="you@example.com"/></label>
+      <label className="auth-field" htmlFor="password">Password<input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="auth-input" placeholder="Your password"/></label>
+      {error && <p role="alert" className="auth-error">{error}</p>}
+      <button type="submit" disabled={loading} className="auth-submit">{loading ? "Signing in..." : "Sign in"}<span aria-hidden="true">↗</span></button>
+      <p className="auth-alt">New to TimeMate? <Link href="/register">Create an account</Link></p>
+    </form>
+  </AuthShell>;
 }

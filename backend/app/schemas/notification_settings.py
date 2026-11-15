@@ -8,6 +8,10 @@ class WhatsAppConnect(BaseModel):
     opted_in: bool
 
 
+class WhatsAppVerify(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class NotificationSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

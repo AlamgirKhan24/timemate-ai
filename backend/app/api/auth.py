@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, verify_password
+from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserOut
 
@@ -36,4 +37,12 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
-    return Token(access_token=create_access_token(user.id))
+    return Token(access_token=create_access_token(user.id, user.token_version))
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Revoke existing bearer tokens for this account. Clients should also discard
+    # the token immediately; this endpoint makes server-side logout effective.
+    user.token_version += 1
+    db.commit()

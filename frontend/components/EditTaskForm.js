@@ -50,8 +50,8 @@ export default function EditTaskForm({ task, timeZone, onSaved, onCancel }) {
     }
   }
 
-  const input = "w-full rounded-lg border border-gray-300 px-3 py-2";
-  const label = "mb-1 block text-sm font-medium";
+  const input = "app-field mt-1.5";
+  const label = "block text-xs font-medium text-gray-500";
 
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-3">
@@ -95,11 +95,11 @@ export default function EditTaskForm({ task, timeZone, onSaved, onCancel }) {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-          {saving ? "Saving..." : "Save changes"}
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button type="submit" disabled={saving} className="app-primary-button">
+          {saving ? "Saving changes…" : "Save changes"}
         </button>
-        <button type="button" onClick={onCancel} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">
+        <button type="button" onClick={onCancel} className="app-secondary-button">
           Cancel
         </button>
       </div>
